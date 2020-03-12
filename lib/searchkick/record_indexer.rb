@@ -1,17 +1,17 @@
 module Searchkick
   class RecordIndexer
-    attr_reader :record, :index
+    attr_reader :index
 
-    def initialize(record)
-      @record = record
-      @index = record.class.searchkick_index
+    def initialize(index)
+      @index = index
     end
 
-    def reindex(method_name = nil, refresh: false, mode: nil)
+    def reindex_records(records, mode: nil, method_name: nil, refresh: false)
       unless [:inline, true, nil, :async, :queue].include?(mode)
         raise ArgumentError, "Invalid value for mode"
       end
 
+      # check afterwards for bulk
       mode ||= Searchkick.callbacks_value || index.options[:callbacks] || true
 
       case mode
@@ -20,35 +20,59 @@ module Searchkick
           raise Searchkick::Error, "Partial reindex not supported with queue option"
         end
 
-        # always pass routing in case record is deleted
-        # before the queue job runs
-        if record.respond_to?(:search_routing)
-          routing = record.search_routing
-        end
+        record_ids =
+          records.map do |record|
+            # always pass routing in case record is deleted
+            # before the queue job runs
+            if record.respond_to?(:search_routing)
+              routing = record.search_routing
+            end
 
-        # escape pipe with double pipe
-        value = queue_escape(record.id.to_s)
-        value = "#{value}|#{queue_escape(routing)}" if routing
-        index.reindex_queue.push(value)
+            # escape pipe with double pipe
+            value = queue_escape(record.id.to_s)
+            value = "#{value}|#{queue_escape(routing)}" if routing
+            value
+          end
+
+        index.reindex_queue.push(*record_ids)
       when :async
         unless defined?(ActiveJob)
           raise Searchkick::Error, "Active Job not found"
         end
 
-        # always pass routing in case record is deleted
-        # before the async job runs
-        if record.respond_to?(:search_routing)
-          routing = record.search_routing
+        # TODO use single job
+        records.each do |record|
+          # always pass routing in case record is deleted
+          # before the async job runs
+          if record.respond_to?(:search_routing)
+            routing = record.search_routing
+          end
+
+          Searchkick::ReindexV2Job.perform_later(
+            record.class.name,
+            record.id.to_s,
+            method_name ? method_name.to_s : nil,
+            routing: routing
+          )
+        end
+      else # bulk, inline/true/nil
+        delete_records, index_records = records.partition { |r| r.destroyed? || !r.persisted? || !r.should_index? }
+
+        # TODO use
+        # index.bulk_delete(delete_records)
+        delete_records.each do |record|
+          begin
+            index.remove(record)
+          rescue Elasticsearch::Transport::Transport::Errors::NotFound
+            # do nothing
+          end
         end
 
-        Searchkick::ReindexV2Job.perform_later(
-          record.class.name,
-          record.id.to_s,
-          method_name ? method_name.to_s : nil,
-          routing: routing
-        )
-      else # bulk, inline/true/nil
-        reindex_record(method_name)
+        if method_name
+          index.bulk_update(index_records, method_name)
+        else
+          index.bulk_index(index_records)
+        end
 
         index.refresh if refresh
       end
@@ -58,22 +82,6 @@ module Searchkick
 
     def queue_escape(value)
       value.gsub("|", "||")
-    end
-
-    def reindex_record(method_name)
-      if record.destroyed? || !record.persisted? || !record.should_index?
-        begin
-          index.remove(record)
-        rescue Elasticsearch::Transport::Transport::Errors::NotFound
-          # do nothing
-        end
-      else
-        if method_name
-          index.update_record(record, method_name)
-        else
-          index.store(record)
-        end
-      end
     end
   end
 end

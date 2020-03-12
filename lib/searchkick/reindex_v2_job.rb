@@ -35,7 +35,7 @@ module Searchkick
         end
       end
 
-      RecordIndexer.new(record).reindex(method_name, mode: :inline)
+      RecordIndexer.new(model.searchkick_index).reindex_records([record], method_name: method_name, mode: :inline)
     end
   end
 end

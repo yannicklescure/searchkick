@@ -76,7 +76,7 @@ module Searchkick
         end
 
         def reindex(method_name = nil, **options)
-          RecordIndexer.new(self).reindex(method_name, **options)
+          RecordIndexer.new(self.class.searchkick_index).reindex_records([self], method_name: method_name, **options)
         end unless method_defined?(:reindex)
 
         # TODO switch to keyword arguments
