@@ -56,9 +56,13 @@ module Searchkick
           )
         end
       else # bulk, inline/true/nil
+        relation = relation.search_import if relation.respond_to?(:search_import)
+
         delete_records, index_records = records.partition { |r| r.destroyed? || !r.persisted? || !r.should_index? }
 
         # TODO use
+        # Searchkick.callbacks(:bulk)
+        # and
         # index.bulk_delete(delete_records)
         delete_records.each do |record|
           begin
