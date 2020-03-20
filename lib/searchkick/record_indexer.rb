@@ -60,22 +60,18 @@ module Searchkick
 
         delete_records, index_records = records.partition { |r| r.destroyed? || !r.persisted? || !r.should_index? }
 
-        # TODO use
-        # Searchkick.callbacks(:bulk)
-        # and
-        # index.bulk_delete(delete_records)
-        delete_records.each do |record|
-          begin
-            index.remove(record)
-          rescue Elasticsearch::Transport::Transport::Errors::NotFound
-            # do nothing
+        Searchkick.callbacks(:bulk) do
+          if index_records.any?
+            if method_name
+              index.bulk_update(index_records, method_name)
+            else
+              index.bulk_index(index_records)
+            end
           end
-        end
-
-        if method_name
-          index.bulk_update(index_records, method_name)
-        else
-          index.bulk_index(index_records)
+          if delete_records.any?
+            # TODO rescue not found errors?
+            index.bulk_delete(delete_records)
+          end
         end
 
         index.refresh if refresh
