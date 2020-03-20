@@ -48,6 +48,17 @@ class BoostTest < Minitest::Test
     assert_order "tomato", ["Tomato A", "Tomato B"]
   end
 
+  def test_conversions_period
+    store [
+      {name: "Tomato Soup A", conversions: {"tomato.soup" => 1}},
+      {name: "Tomato Soup B", conversions: {"tomato.soup" => 2}},
+      {name: "Tomato Soup C", conversions: {"tomato.soup" => 3}}
+    ]
+    assert_order "tomato.soup", ["Tomato Soup C", "Tomato Soup B", "Tomato Soup A"]
+    assert_equal_scores "tomato"
+    assert_equal_scores "tomato soup"
+  end
+
   # global boost
 
   def test_boost
