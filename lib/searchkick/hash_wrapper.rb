@@ -1,12 +1,29 @@
 module Searchkick
-  # Subclass of `Hashie::Mash` to wrap Hash-like structures
-  # (responses from Elasticsearch)
-  #
-  # The primary goal of the subclass is to disable the
-  # warning being printed by Hashie for re-defined
-  # methods, such as `sort`.
-  #
-  class HashWrapper < ::Hashie::Mash
-    disable_warnings if respond_to?(:disable_warnings)
+  class HashWrapper
+    def initialize(data)
+      @data = data
+    end
+
+    def method_missing(m, *args, &block)
+      if @data.key?(m.to_s)
+        raise ArgumentError, "wrong number of arguments (given #{args.size}, expected 0)" if args.any?
+        @data[m.to_s]
+      else
+        super
+      end
+    end
+
+    def respond_to?(m, include_private = false)
+      @data.key?(m.to_s) || super
+    end
+
+    def to_h
+      @data
+    end
+
+    def inspect
+      str = @data.map { |k, v| "#{k}=#{v.inspect}" }.join(" ")
+      "#<Searchkick::HashWrapper #{str}>"
+    end
   end
 end

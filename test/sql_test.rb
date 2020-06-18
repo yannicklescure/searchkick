@@ -68,7 +68,7 @@ class SqlTest < Minitest::Test
 
   def test_load_false
     store_names ["Product A"]
-    assert_kind_of Hash, Product.search("product", load: false).first
+    assert_kind_of Searchkick::HashWrapper, Product.search("product", load: false).first
   end
 
   def test_load_false_methods
@@ -78,7 +78,7 @@ class SqlTest < Minitest::Test
 
   def test_load_false_with_includes
     store_names ["Product A"]
-    assert_kind_of Hash, Product.search("product", load: false, includes: [:store]).first
+    assert_kind_of Searchkick::HashWrapper, Product.search("product", load: false, includes: [:store]).first
   end
 
   def test_load_false_nested_object
@@ -92,7 +92,7 @@ class SqlTest < Minitest::Test
   def test_select
     store [{name: "Product A", store_id: 1}]
     result = Product.search("product", load: false, select: [:name, :store_id]).first
-    assert_equal %w(id name store_id), result.keys.reject { |k| k.start_with?("_") }.sort
+    assert_equal %w(id name store_id), result.to_h.keys.reject { |k| k.start_with?("_") }.sort
     assert_equal "Product A", result.name
     assert_equal 1, result.store_id
   end
@@ -106,9 +106,9 @@ class SqlTest < Minitest::Test
   def test_select_single_field
     store [{name: "Product A", store_id: 1}]
     result = Product.search("product", load: false, select: :name).first
-    assert_equal %w(id name), result.keys.reject { |k| k.start_with?("_") }.sort
+    assert_equal %w(id name), result.to_h.keys.reject { |k| k.start_with?("_") }.sort
     assert_equal "Product A", result.name
-    assert_nil result.store_id
+    assert !result.respond_to?(:store_id)
   end
 
   def test_select_all
@@ -129,15 +129,15 @@ class SqlTest < Minitest::Test
   def test_select_includes
     store [{name: "Product A", user_ids: [1, 2]}]
     result = Product.search("product", load: false, select: {includes: [:name]}).first
-    assert_equal %w(id name), result.keys.reject { |k| k.start_with?("_") }.sort
+    assert_equal %w(id name), result.to_h.keys.reject { |k| k.start_with?("_") }.sort
     assert_equal "Product A", result.name
-    assert_nil result.store_id
+    assert !result.respond_to?(:store_id)
   end
 
   def test_select_excludes
     store [{name: "Product A", user_ids: [1, 2], store_id: 1}]
     result = Product.search("product", load: false, select: {excludes: [:name]}).first
-    assert_nil result.name
+    assert !result.respond_to?(:name)
     assert_equal [1, 2], result.user_ids
     assert_equal 1, result.store_id
   end
@@ -147,8 +147,8 @@ class SqlTest < Minitest::Test
     store [{name: "Product A", user_ids: [1, 2], store_id: 1}]
     result = Product.search("product", load: false, select: {includes: [:store_id], excludes: [:name]}).first
     assert_equal 1, result.store_id
-    assert_nil result.name
-    assert_nil result.user_ids
+    assert !result.respond_to?(:name)
+    assert !result.respond_to?(:user_ids)
   end
 
   # nested
