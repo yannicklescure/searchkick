@@ -17,13 +17,13 @@ if [ ! -d "$CACHE_DIR" ]; then
 
   cd $CACHE_DIR
 
-  sudo bin/elasticsearch-plugin install analysis-kuromoji
+  bin/elasticsearch-plugin install analysis-kuromoji
   if [[ $ELASTICSEARCH_VERSION != 6.0.* ]]; then
-    sudo bin/elasticsearch-plugin install analysis-nori
+    bin/elasticsearch-plugin install analysis-nori
   fi
-  sudo bin/elasticsearch-plugin install analysis-smartcn
-  sudo bin/elasticsearch-plugin install analysis-stempel
-  sudo bin/elasticsearch-plugin install analysis-ukrainian
+  bin/elasticsearch-plugin install analysis-smartcn
+  bin/elasticsearch-plugin install analysis-stempel
+  bin/elasticsearch-plugin install analysis-ukrainian
 else
   echo "Elasticsearch cached"
 fi
