@@ -21,3 +21,9 @@ fi
 cd $CACHE_DIR
 bin/elasticsearch -d
 for i in {1..12}; do wget -O- -v http://127.0.0.1:9200/ && break || sleep 5; done
+
+bin/elasticsearch-plugin install analysis-kuromoji
+bin/elasticsearch-plugin install analysis-nori
+bin/elasticsearch-plugin install analysis-smartcn
+bin/elasticsearch-plugin install analysis-stempel
+bin/elasticsearch-plugin install analysis-ukrainian
